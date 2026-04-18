@@ -1,0 +1,74 @@
+## SECTION: PM2.5
+POLLUTANT: PM2.5
+SOURCES: vehicular exhaust, coal combustion, construction dust, crop burning, industrial emissions, biomass burning
+HEALTH_IMPACT: penetrates deep into lungs and bloodstream; causes cardiovascular disease, respiratory infections, lung cancer, premature death; children and elderly most vulnerable
+POLICY: ban crop burning, enforce BS-VI vehicle norms, promote electric vehicles, regulate coal power plants, dust suppression on construction sites
+AQI_CONTRIBUTION: highest contributor to AQI in Delhi; spikes in winter due to temperature inversion trapping particles near ground
+SEASON: worst in October to February due to Diwali firecrackers and north-west wind carrying stubble burning smoke from Punjab and Haryana
+
+## SECTION: PM10
+POLLUTANT: PM10
+SOURCES: road dust, construction activity, unpaved roads, industrial dust, open waste burning
+HEALTH_IMPACT: irritates upper respiratory tract; aggravates asthma and bronchitis; causes nasal and throat irritation
+POLICY: water sprinkling on roads, mechanised road sweeping, mandatory green netting on construction sites, ban open waste burning
+AQI_CONTRIBUTION: second highest contributor; elevated year-round in Delhi due to chronic construction and road dust
+SEASON: peaks in dry months (March to May) and winter
+
+## SECTION: NO2
+POLLUTANT: NO2
+SOURCES: vehicular exhaust (especially diesel), thermal power plants, industrial furnaces
+HEALTH_IMPACT: inflames airways, reduces lung function, increases susceptibility to respiratory infections; contributes to smog formation
+POLICY: promote CNG vehicles, stricter emission norms for diesel vehicles, phase out old vehicles through odd-even or scrappage policy
+AQI_CONTRIBUTION: moderate direct contribution; important precursor to ozone and secondary PM2.5
+SEASON: elevated in winter mornings due to traffic congestion and low wind speed
+
+## SECTION: NO
+POLLUTANT: NO
+SOURCES: combustion engines, power plants, industrial boilers
+HEALTH_IMPACT: reacts with oxygen to form NO2; contributes to smog; direct health effects at very high concentrations
+POLICY: improve combustion efficiency, catalytic converters in vehicles, clean fuel mandates
+AQI_CONTRIBUTION: low direct AQI contribution; important precursor pollutant
+SEASON: peaks during peak traffic hours in winter
+
+## SECTION: CO
+POLLUTANT: CO
+SOURCES: incomplete combustion — vehicular exhaust, generators, biomass burning, industrial processes
+HEALTH_IMPACT: reduces blood oxygen capacity; causes headaches, dizziness, and fatigue at moderate levels; fatal at high concentrations; dangerous indoors
+POLICY: catalytic converters, ban on burning waste, promote cleaner cooking fuels (LPG, biogas), regulate generators
+AQI_CONTRIBUTION: moderate; elevated in heavy traffic corridors and during winter when combustion is less efficient
+SEASON: worst in winter due to increased generator and heating fuel usage
+
+## SECTION: O3
+POLLUTANT: O3
+SOURCES: secondary pollutant — formed when NOx and VOCs react in sunlight; not directly emitted
+HEALTH_IMPACT: chest pain, coughing, throat irritation; aggravates asthma; damages lung tissue with long-term exposure; harms crops
+POLICY: reduce NOx and VOC emissions — control vehicle exhaust, paint and solvent regulations, industrial VOC controls
+AQI_CONTRIBUTION: significant in summer afternoons; counterintuitively lower in winter despite high NOx because sunlight is needed for ozone formation
+SEASON: peaks in April to July during hot sunny afternoons
+
+## SECTION: SO2
+POLLUTANT: SO2
+SOURCES: coal-burning power plants, smelters, diesel engines, industrial boilers
+HEALTH_IMPACT: irritates respiratory tract; causes acid rain; aggravates asthma; reacts to form sulphate particles (secondary PM2.5)
+POLICY: switch to low-sulphur fuel, flue gas desulphurisation in power plants, relocate polluting industries outside city
+AQI_CONTRIBUTION: relatively low direct contribution in Delhi; major issue near industrial zones
+SEASON: elevated near industrial areas year-round
+
+## SECTION: NH3
+POLLUTANT: NH3
+SOURCES: agricultural fertiliser application, livestock waste, sewage, waste dumping sites
+HEALTH_IMPACT: irritates eyes, nose, throat; reacts with NOx and SO2 to form ammonium nitrate and sulphate — key secondary PM2.5 components
+POLICY: reduce fertiliser overuse, cover livestock waste, improve sewage treatment, regulate dumping sites
+AQI_CONTRIBUTION: indirect but significant — major driver of secondary PM2.5 formation especially in winter
+SEASON: elevated post-monsoon due to agricultural activity in surrounding states
+
+## SECTION: HEALTH_THRESHOLDS
+AQI 0-50: Good — air quality satisfactory, minimal risk
+AQI 51-100: Satisfactory — minor discomfort to sensitive individuals
+AQI 101-200: Moderate — breathing discomfort to people with lung/heart disease, children, elderly
+AQI 201-300: Poor — breathing discomfort to most; serious for sensitive groups
+AQI 301-400: Very Poor — respiratory illness on prolonged exposure; avoid outdoor activity
+AQI 401-500: Severe — affects healthy population; serious risk of respiratory effects; health alert
+
+## SECTION: DELHI_CONTEXT
+Delhi is one of the most polluted cities in the world. Its pollution is driven by a combination of geography, rapid urbanisation, and transboundary pollution from crop burning in Punjab and Haryana. The city is surrounded on three sides by land, which traps pollutants during winter temperature inversions. Key pollution sources are vehicular traffic (40%), dust (30%), industry (20%), and biomass burning (10%) by contribution estimates.
