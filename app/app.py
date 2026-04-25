@@ -24,15 +24,23 @@ st.set_page_config(
 # ─────────────────────────────────────────────────────────────
 # PATHS
 # ─────────────────────────────────────────────────────────────
-BASE_DIR     = r"C:\Users\suman\OneDrive\Documents\Projects\DELHI AQI STUDY"
-MODEL_PATH   = os.path.join(BASE_DIR, "models", "xgb_model.pkl")
-DATA_PATH    = os.path.join(BASE_DIR, "data", "processed", "delhi_clean.csv")
-KB_PATH      = os.path.join(BASE_DIR, "data", "knowledge_base.txt")
+# BASE_DIR     = r"C:\Users\suman\OneDrive\Documents\Projects\DELHI AQI STUDY"
+# MODEL_PATH   = os.path.join(BASE_DIR, "models", "xgb_model.pkl")
+# DATA_PATH    = os.path.join(BASE_DIR, "data", "processed", "delhi_clean.csv")
+# KB_PATH      = os.path.join(BASE_DIR, "data", "knowledge_base.txt")
+
+
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+MODEL_PATH = BASE_DIR / "models" / "xgb_model.pkl"
+DATA_PATH  = BASE_DIR / "data" / "processed" / "delhi_clean.csv"
+KB_PATH    = BASE_DIR / "data" / "knowledge_base.txt"
 FEATURES     = ['PM2.5', 'PM10', 'NO', 'NO2', 'NH3', 'CO', 'SO2', 'O3']
 OLLAMA_URL   = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "tinyllama"
 MAX_REDUCTION_PCT = 40
-
 # ─────────────────────────────────────────────────────────────
 # AQI HELPERS
 # ─────────────────────────────────────────────────────────────
@@ -81,11 +89,11 @@ hr { border-color: rgba(255,255,255,0.06) !important; }
 # ─────────────────────────────────────────────────────────────
 @st.cache_resource
 def load_model():
-    return joblib.load(MODEL_PATH)
+    return joblib.load(str(MODEL_PATH))
 
 @st.cache_data
 def load_data():
-    raw = pd.read_csv(DATA_PATH)
+    raw = pd.read_csv(str(DATA_PATH))   # ✅ FIXED
     return raw[FEATURES].dropna().reset_index(drop=True)
 
 @st.cache_resource
@@ -94,13 +102,14 @@ def load_explainer(_model, _X):
 
 @st.cache_data
 def load_kb():
-    with open(KB_PATH, "r", encoding="utf-8") as f:
+    with open(str(KB_PATH), "r", encoding="utf-8") as f:   # ✅ FIXED
         return f.read()
 
 @st.cache_data
 def build_day_options(model_path, data_path):
-    m  = joblib.load(model_path)
-    df = pd.read_csv(data_path)[FEATURES].dropna().reset_index(drop=True)
+    m  = joblib.load(str(model_path))   # ✅ FIXED
+    df = pd.read_csv(str(data_path))[FEATURES].dropna().reset_index(drop=True)  # ✅ FIXED
+
     options = {}
     for i in range(len(df)):
         row = df.iloc[i].to_dict()
@@ -111,7 +120,6 @@ def build_day_options(model_path, data_path):
             label = f"Row {i:>4d}  │  AQI {p:>5.0f}  │  {cat}"
             options[label] = i
     return options
-
 # ─────────────────────────────────────────────────────────────
 # CORE FUNCTIONS
 # ─────────────────────────────────────────────────────────────
