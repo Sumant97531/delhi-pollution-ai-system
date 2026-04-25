@@ -13,6 +13,15 @@ import requests
 import re
 import os
 import matplotlib.pyplot as plt
+import warnings
+
+warnings.filterwarnings(
+    "ignore",
+    message=".*If you are loading a serialized model.*",
+    category=UserWarning,
+    module="xgboost.core",
+)
+
 
 # ─────────────────────────────────────────────────────────────
 # PAGE CONFIG (must be first)
@@ -180,7 +189,7 @@ hr { border-color: rgba(255,255,255,0.06) !important; }
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────
-# LOAD RESOURCES (cached)
+# LOAD RESOURCES
 # ─────────────────────────────────────────────────────────────
 @st.cache_resource
 def load_model():
@@ -256,7 +265,7 @@ def retrieve_kb(kb_text, pollutants, max_chars=400):
     return "\n---\n".join(matched)[:max_chars]
 
 # ─────────────────────────────────────────────────────────────
-# OLLAMA — FIX 3: plain text errors, no markdown fences
+# OLLAMA
 # ─────────────────────────────────────────────────────────────
 def call_ollama(top_features, shap_vals_dict, sim_orig, sim_new, delta, kb_ctx):
     top_str  = ", ".join(top_features)
@@ -288,9 +297,9 @@ def call_ollama(top_features, shap_vals_dict, sim_orig, sim_new, delta, kb_ctx):
         return "Ollama is not running. Open a terminal and run: ollama serve"
     except requests.exceptions.Timeout:
         return (
-            f"Ollama timed out after 120 seconds. "
-            f"Try a lighter model: run 'ollama pull phi3' in terminal, "
-            f"then change OLLAMA_MODEL to 'phi3' in app.py."
+            "Ollama timed out after 120 seconds. "
+            "Try a lighter model: run 'ollama pull phi3' in terminal, "
+            "then change OLLAMA_MODEL to 'phi3' in app.py."
         )
     except Exception as e:
         return f"Unexpected error: {e}"
@@ -327,7 +336,7 @@ def shap_chart(shap_series):
     return fig
 
 # ─────────────────────────────────────────────────────────────
-# SENSITIVITY CHART — FIX 1: dedicated function, explicit limits
+# SENSITIVITY CHART
 # ─────────────────────────────────────────────────────────────
 def sensitivity_chart(baseline, model):
     steps     = [0, 5, 10, 15, 20, 25, 30, 35, 40]
@@ -407,29 +416,32 @@ with top_r:
 baseline = X.iloc[row_idx].to_dict()
 
 # ─────────────────────────────────────────────────────────────
-# SESSION STATE
+# SESSION STATE — initialise slider keys to 0 if not present
 # ─────────────────────────────────────────────────────────────
-if "reductions" not in st.session_state:
-    st.session_state.reductions = {f: 0 for f in FEATURES}
+for f in FEATURES:
+    if f"slider_{f}" not in st.session_state:
+        st.session_state[f"slider_{f}"] = 0
+
 if "reset_flag" not in st.session_state:
     st.session_state.reset_flag = False
 
+# Auto-reset when day changes
 if st.session_state.get("last_row_idx") != row_idx:
     st.session_state.last_row_idx = row_idx
     for f in FEATURES:
         st.session_state[f"slider_{f}"] = 0
-    st.session_state.reductions = {f: 0 for f in FEATURES}
 
+# Apply reset flag
 if st.session_state.reset_flag:
     for f in FEATURES:
         st.session_state[f"slider_{f}"] = 0
-    st.session_state.reductions = {f: 0 for f in FEATURES}
     st.session_state.reset_flag = False
 
 # ─────────────────────────────────────────────────────────────
-# COMPUTE
+# COMPUTE — reads slider values from session state directly
 # ─────────────────────────────────────────────────────────────
-modified          = apply_reductions(baseline, st.session_state.reductions)
+reductions        = {f: st.session_state[f"slider_{f}"] for f in FEATURES}
+modified          = apply_reductions(baseline, reductions)
 orig_aqi          = predict_aqi(model, baseline)
 new_aqi           = predict_aqi(model, modified)
 delta, pct_change = compute_delta(orig_aqi, new_aqi)
@@ -459,12 +471,9 @@ with left_col:
 
     btn_l, btn_r = st.columns(2)
     with btn_l:
-        # FIX 2: st.rerun() forces recompute so AQI cards update immediately
         if st.button("⚡ Smart Recommend"):
             for f in FEATURES:
-                val = 20 if f in top3_features else 0
-                st.session_state[f"slider_{f}"] = val
-                st.session_state.reductions[f]  = val
+                st.session_state[f"slider_{f}"] = 20 if f in top3_features else 0
             st.rerun()
     with btn_r:
         if st.button("↺ Reset All"):
@@ -473,35 +482,32 @@ with left_col:
 
     st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
 
+    # Particulates
     st.markdown('<div class="section-label" style="margin-top:0.8rem">Particulates</div>', unsafe_allow_html=True)
     for f in ["PM2.5", "PM10"]:
-        val = st.slider(
+        st.slider(
             f"{f}  — current: {baseline[f]:.1f} μg/m³",
             min_value=0, max_value=50, step=1,
-            value=st.session_state.reductions.get(f, 0),
             key=f"slider_{f}", format="%d%%",
         )
-        st.session_state.reductions[f] = val
 
+    # Nitrogen compounds
     st.markdown('<div class="section-label" style="margin-top:0.8rem">Nitrogen Compounds</div>', unsafe_allow_html=True)
     for f in ["NO", "NO2", "NH3"]:
-        val = st.slider(
+        st.slider(
             f"{f}  — current: {baseline[f]:.1f} μg/m³",
             min_value=0, max_value=50, step=1,
-            value=st.session_state.reductions.get(f, 0),
             key=f"slider_{f}", format="%d%%",
         )
-        st.session_state.reductions[f] = val
 
+    # Other gases
     st.markdown('<div class="section-label" style="margin-top:0.8rem">Other Gases</div>', unsafe_allow_html=True)
     for f in ["CO", "SO2", "O3"]:
-        val = st.slider(
+        st.slider(
             f"{f}  — current: {baseline[f]:.1f} μg/m³",
             min_value=0, max_value=50, step=1,
-            value=st.session_state.reductions.get(f, 0),
             key=f"slider_{f}", format="%d%%",
         )
-        st.session_state.reductions[f] = val
 
 # ══════════════════════════════
 # RIGHT — AQI CARDS
@@ -579,14 +585,13 @@ with viz_l:
         unsafe_allow_html=True,
     )
     fig = shap_chart(shap_vals)
-    st.pyplot(fig, use_container_width=True)
+    st.pyplot(fig, width="stretch")
     plt.close(fig)
 
 with viz_r:
     st.markdown('<div class="section-label">Sensitivity — PM2.5 Reduction</div>', unsafe_allow_html=True)
-    # FIX 1: dedicated function, no inline matplotlib that can silently fail
     fig2 = sensitivity_chart(baseline, model)
-    st.pyplot(fig2, use_container_width=True)
+    st.pyplot(fig2, width="stretch")
     plt.close(fig2)
 
 # ─────────────────────────────────────────────────────────────
