@@ -28,7 +28,7 @@ import shap
 print("All imports done ✅")
 
 # ─────────────────────────────────────────────────────────────
-# CELL 3 — Project paths (edit BASE_DIR if needed)
+# CELL 3 — Project paths
 # ─────────────────────────────────────────────────────────────
 #%%
 BASE_DIR   = r"C:\Users\suman\OneDrive\Documents\Projects\DELHI AQI STUDY"
@@ -45,7 +45,7 @@ print("Data exists     :", os.path.exists(DATA_PATH))
 print("KB exists       :", os.path.exists(KB_PATH))
 
 # ─────────────────────────────────────────────────────────────
-# CELL 4 — RAG system (knowledge base loader + retriever)
+# CELL 4 — RAG system
 # ─────────────────────────────────────────────────────────────
 #%%
 def _load_kb(path: str) -> list:
@@ -59,9 +59,9 @@ def _load_kb(path: str) -> list:
         block = block.strip()
         if not block:
             continue
-        lines   = block.splitlines()
-        header  = lines[0].strip().lstrip("#").strip()
-        body    = "\n".join(lines[1:]).strip()
+        lines      = block.splitlines()
+        header     = lines[0].strip().lstrip("#").strip()
+        body       = "\n".join(lines[1:]).strip()
         text_lower = (header + " " + body).lower()
         keywords   = set(re.findall(r"[a-z0-9][a-z0-9_.]{1,}", text_lower))
         chunks.append({"header": header, "content": body, "keywords": keywords})
@@ -121,10 +121,6 @@ print("SHAP ready  ✅")
 # ─────────────────────────────────────────────────────────────
 #%%
 def simulate(row: pd.Series, changes: dict) -> dict:
-    """
-    changes = {"PM2.5": 20, "NO2": 10}
-    Reduces each feature by that percentage, returns AQI delta.
-    """
     modified = row.copy()
     for feature, pct in changes.items():
         modified[feature] *= (1 - pct / 100)
@@ -167,18 +163,18 @@ print("Explain function ready ✅")
 # ─────────────────────────────────────────────────────────────
 #%%
 ALIAS_MAP = {
-    "pm2.5": "PM2.5", "pm 2.5": "PM2.5", "fine particles": "PM2.5",
-    "pm10" : "PM10",  "pm 10" : "PM10",  "coarse particles": "PM10",
-    "no2"  : "NO2",   "nitrogen dioxide": "NO2",
-    "no"   : "NO",    "nitric oxide": "NO",
-    "nh3"  : "NH3",   "ammonia": "NH3",
-    "co"   : "CO",    "carbon monoxide": "CO",
-    "so2"  : "SO2",   "sulphur dioxide": "SO2", "sulfur dioxide": "SO2",
-    "o3"   : "O3",    "ozone": "O3",
+    "pm2.5"          : "PM2.5", "pm 2.5"        : "PM2.5", "fine particles"  : "PM2.5",
+    "pm10"           : "PM10",  "pm 10"         : "PM10",  "coarse particles": "PM10",
+    "no2"            : "NO2",   "nitrogen dioxide": "NO2",
+    "no"             : "NO",    "nitric oxide"  : "NO",
+    "nh3"            : "NH3",   "ammonia"       : "NH3",
+    "co"             : "CO",    "carbon monoxide": "CO",
+    "so2"            : "SO2",   "sulphur dioxide": "SO2",  "sulfur dioxide"  : "SO2",
+    "o3"             : "O3",    "ozone"         : "O3",
 }
 
 def parse_intent(query: str) -> dict:
-    q    = query.lower()
+    q       = query.lower()
     changes = {}
 
     for alias, canonical in ALIAS_MAP.items():
@@ -207,18 +203,21 @@ print("Intent parser ready ✅")
 # ─────────────────────────────────────────────────────────────
 #%%
 OLLAMA_URL   = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "tinyllama"  # change to "mistral" or "phi3" if preferred
+OLLAMA_MODEL = "tinyllama"   # change to "phi3" or "mistral" if preferred
 
 def _build_prompt(row, user_query, intent, sim_result, shap_result, kb_context):
-    top = shap_result["top_contributors"]
+    top      = shap_result["top_contributors"]
     top_vals = shap_result["top_shap_values"]
 
     sim_line = ""
     if sim_result:
         changes_str = ", ".join(f"{f} -{p}%" for f, p in intent["changes"].items())
-        sim_line = f"Policy: {changes_str} | AQI: {sim_result['original_aqi']} → {sim_result['new_aqi']} (improvement: {sim_result['delta']} points)"
+        sim_line = (
+            f"Policy: {changes_str} | "
+            f"AQI: {sim_result['original_aqi']} → {sim_result['new_aqi']} "
+            f"(improvement: {sim_result['delta']} points)"
+        )
 
-    # Keep KB context short — only first 300 chars
     kb_short = kb_context[:300] if kb_context else ""
 
     return f"""Delhi AQI analyst. Use only given data.
@@ -249,7 +248,11 @@ def call_ollama(prompt: str) -> str:
         resp.raise_for_status()
         return resp.json().get("response", "").strip()
     except requests.exceptions.ConnectionError:
-        return "❌ Ollama not running. Open terminal and run: ollama serve"
+        return "Ollama not running. Open terminal and run: ollama serve"
+    except requests.exceptions.Timeout:
+        return "Ollama timed out. Try: ollama pull phi3 then set OLLAMA_MODEL = 'phi3'"
+    except Exception as e:
+        return f"Unexpected error: {e}"
 
 print("Ollama functions ready ✅")
 
@@ -283,9 +286,9 @@ def answer_query(row: pd.Series, user_query: str) -> dict:
     response = call_ollama(prompt)
 
     structured = {
-        "original_aqi"    : sim["original_aqi"]      if sim else None,
-        "new_aqi"         : sim["new_aqi"]            if sim else None,
-        "aqi_reduction"   : sim["delta"]              if sim else None,
+        "original_aqi"    : sim["original_aqi"]   if sim else None,
+        "new_aqi"         : sim["new_aqi"]         if sim else None,
+        "aqi_reduction"   : sim["delta"]           if sim else None,
         "policy_applied"  : intent["changes"],
         "top_contributors": shap_out["top_contributors"],
         "shap_values"     : shap_out["top_shap_values"],
@@ -307,7 +310,7 @@ print("\n✅ ALL CELLS LOADED — ready to query!")
 try:
     r = requests.get("http://localhost:11434", timeout=3)
     print("Ollama is running ✅")
-except:
+except Exception:
     print("❌ Ollama NOT running.")
     print("   Open a NEW terminal and run:")
     print("   ollama serve")
@@ -316,7 +319,6 @@ except:
 # ─────────────────────────────────────────────────────────────
 # CELL 12 — RUN YOUR QUERY HERE
 # ─────────────────────────────────────────────────────────────
-
 #%%
 sample = _X.iloc[200]
 
@@ -327,8 +329,5 @@ print(json.dumps(result["structured"], indent=2))
 
 print("\n── LLM RESPONSE ────────────────────────────────────────")
 print(result["llm_response"])
-# %%
-import xgboost, shap
-print(xgboost.__version__)
-print(shap.__version__)
+
 # %%

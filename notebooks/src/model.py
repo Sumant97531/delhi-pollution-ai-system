@@ -7,7 +7,8 @@ import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import root_mean_squared_error
 from xgboost import XGBRegressor
 import shap
 
@@ -28,10 +29,10 @@ print("Processed dir exists:", os.path.exists(PROCESSED_DIR))
 
 #%%
 # ============================================================
-# 2. LOAD DATA  ← read from raw/, NOT Desktop
+# 2. LOAD DATA — read from raw/
 # ============================================================
 
-file_path = os.path.join(RAW_DIR, "city_day.csv")   # ✅ FIX: was Desktop path
+file_path = os.path.join(RAW_DIR, "city_day.csv")
 
 df = pd.read_csv(file_path)
 print("Data loaded:", df.shape)
@@ -41,14 +42,13 @@ print("Data loaded:", df.shape)
 # 3. FILTER DELHI
 # ============================================================
 
-df['City']   = df['City'].str.strip().str.lower()
-delhi_data   = df[df['City'] == 'delhi'].copy()
+df['City']        = df['City'].str.strip().str.lower()
+delhi_data        = df[df['City'] == 'delhi'].copy()
 
-# Parse Date for chronological split + future seasonal features
-delhi_data['Date']       = pd.to_datetime(delhi_data['Date'])
-delhi_data               = delhi_data.sort_values('Date').reset_index(drop=True)
-delhi_data['month']      = delhi_data['Date'].dt.month
-delhi_data['day_of_year']= delhi_data['Date'].dt.dayofyear
+delhi_data['Date']        = pd.to_datetime(delhi_data['Date'])
+delhi_data                = delhi_data.sort_values('Date').reset_index(drop=True)
+delhi_data['month']       = delhi_data['Date'].dt.month
+delhi_data['day_of_year'] = delhi_data['Date'].dt.dayofyear
 
 print("Delhi rows:", len(delhi_data))
 
@@ -59,12 +59,10 @@ print("Delhi rows:", len(delhi_data))
 
 numeric_cols = delhi_data.select_dtypes(include=['number']).columns
 
-# Direct assignment on owned copy — avoids SettingWithCopyWarning
 delhi_data[numeric_cols] = delhi_data[numeric_cols].interpolate(
     limit_direction="both"
 )
 
-# AQI Bucket Fix
 def get_aqi_bucket(aqi):
     if pd.isna(aqi):
         return None
@@ -89,7 +87,7 @@ print("Remaining missing (numeric)  :", delhi_data[numeric_cols].isna().sum().su
 
 #%%
 # ============================================================
-# 5. SAVE PROCESSED DATA  ← fills your empty processed/ folder
+# 5. SAVE PROCESSED DATA
 # ============================================================
 
 processed_path = os.path.join(PROCESSED_DIR, "delhi_clean.csv")
@@ -105,7 +103,6 @@ print("Shape      :", delhi_data.shape)
 # 6. MODEL TRAINING
 # ============================================================
 
-# NOx dropped — it is NO + NO2 combined (redundant feature)
 features = ['PM2.5', 'PM10', 'NO', 'NO2', 'NH3', 'CO', 'SO2', 'O3']
 
 model_data = delhi_data.dropna(subset=features + ['AQI']).copy()
@@ -113,7 +110,6 @@ model_data = delhi_data.dropna(subset=features + ['AQI']).copy()
 X = model_data[features]
 y = model_data['AQI']
 
-# Chronological split — no random shuffle to avoid temporal leakage
 split_idx          = int(len(model_data) * 0.8)
 X_train, X_test    = X.iloc[:split_idx],  X.iloc[split_idx:]
 y_train, y_test    = y.iloc[:split_idx],  y.iloc[split_idx:]
@@ -130,14 +126,11 @@ xgb_model = XGBRegressor(
 )
 
 xgb_model.fit(X_train, y_train)
-from sklearn.metrics import root_mean_squared_error
-
 
 y_pred = xgb_model.predict(X_test)
 r2     = xgb_model.score(X_test, y_test)
 mae    = mean_absolute_error(y_test, y_pred)
-rmse = root_mean_squared_error(y_test, y_pred)
-
+rmse   = root_mean_squared_error(y_test, y_pred)
 
 print(f"\n🎯 XGB R²  : {r2:.4f}")
 print(f"📉 MAE     : {mae:.2f}")

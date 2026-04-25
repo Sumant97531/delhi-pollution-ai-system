@@ -43,7 +43,6 @@ def simulate_change(row: pd.Series, changes: dict) -> pd.DataFrame:
             raise ValueError(f"'{feature}' not in features list")
         modified[feature] *= (1 - percent / 100)
 
-    # FIX: wrap in DataFrame so XGBoost gets correct feature names
     return pd.DataFrame([modified], columns=features)
 
 #%%
@@ -133,15 +132,14 @@ def sensitivity_analysis(
         modified = simulate_change(sample, {feature: p})
         new_pred = model.predict(modified)[0]
         results.append({
-            "reduction_%"   : p,
-            "new_aqi"       : round(new_pred,          2),
-            "improvement"   : round(base_pred - new_pred, 2)
+            "reduction_%" : p,
+            "new_aqi"     : round(new_pred,           2),
+            "improvement" : round(base_pred - new_pred, 2)
         })
 
     return pd.DataFrame(results)
 
 #%%
-# Run sensitivity for the two dominant features from SHAP
 pm25_sens = sensitivity_analysis(sample, "PM2.5")
 pm10_sens = sensitivity_analysis(sample, "PM10")
 
@@ -151,7 +149,6 @@ print(pm25_sens.to_string(index=False))
 print("\n--- PM10 Sensitivity ---")
 print(pm10_sens.to_string(index=False))
 
-# %%
 #%%
 # ============================================================
 # 8. SMART POLICY (SHAP-GUIDED AUTO SELECTION)
@@ -167,9 +164,6 @@ def smart_policy(sample: pd.Series, top_k: int = 3, reduction: float = 20) -> di
     Uses per-sample SHAP values to identify which pollutants
     are driving AQI the most on that specific day, then
     simulates reducing only those by `reduction` percent.
-
-    This is smarter than fixed scenarios — the policy adapts
-    to the actual pollution profile of the day.
     """
     sample_df = pd.DataFrame([sample], columns=features)
     shap_vals = explainer(sample_df)
@@ -179,7 +173,6 @@ def smart_policy(sample: pd.Series, top_k: int = 3, reduction: float = 20) -> di
         index=features
     ).sort_values(ascending=False)
 
-    # Only take features with positive SHAP (actively pushing AQI up)
     top_features = contrib[contrib > 0].head(top_k).index.tolist()
 
     if not top_features:
@@ -192,27 +185,24 @@ def smart_policy(sample: pd.Series, top_k: int = 3, reduction: float = 20) -> di
     new_pred  = model.predict(modified)[0]
 
     return {
-        "top_features"  : top_features,
-        "scenario"      : scenario,
-        "original_aqi"  : round(base_pred,             2),
-        "new_aqi"       : round(new_pred,               2),
-        "improvement"   : round(base_pred - new_pred,   2),
-        "shap_contribs" : contrib[top_features].round(2).to_dict()
+        "top_features" : top_features,
+        "scenario"     : scenario,
+        "original_aqi" : round(base_pred,           2),
+        "new_aqi"      : round(new_pred,             2),
+        "improvement"  : round(base_pred - new_pred, 2),
+        "shap_contribs": contrib[top_features].round(2).to_dict()
     }
 
 #%%
-# --- Single sample test ---
 result = smart_policy(sample, top_k=3, reduction=20)
 print("\n--- SMART POLICY (single sample) ---")
 for k, v in result.items():
     print(f"  {k}: {v}")
 
 #%%
-# --- Run smart policy across multiple days ---
 def run_smart_policy_bulk(X: pd.DataFrame, top_k: int = 3, reduction: float = 20, n: int = 20) -> pd.DataFrame:
     """
     Applies smart_policy to the first n rows and compares results.
-    Useful for seeing which days benefit most from targeted intervention.
     """
     rows = []
     for i in range(n):
@@ -220,11 +210,11 @@ def run_smart_policy_bulk(X: pd.DataFrame, top_k: int = 3, reduction: float = 20
         if "message" in r:
             continue
         rows.append({
-            "day_index"     : i,
-            "original_aqi"  : r["original_aqi"],
-            "new_aqi"       : r["new_aqi"],
-            "improvement"   : r["improvement"],
-            "top_features"  : ", ".join(r["top_features"])
+            "day_index"   : i,
+            "original_aqi": r["original_aqi"],
+            "new_aqi"     : r["new_aqi"],
+            "improvement" : r["improvement"],
+            "top_features": ", ".join(r["top_features"])
         })
     return pd.DataFrame(rows).sort_values("improvement", ascending=False).reset_index(drop=True)
 

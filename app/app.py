@@ -13,19 +13,7 @@ import requests
 import re
 import os
 import matplotlib.pyplot as plt
-import warnings
 
-warnings.filterwarnings(
-    "ignore",
-    message=".*If you are loading a serialized model.*",
-    category=UserWarning,
-    module="xgboost.core",
-)
-
-
-# ─────────────────────────────────────────────────────────────
-# PAGE CONFIG (must be first)
-# ─────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Delhi AQI Intelligence",
     page_icon="🌫️",
@@ -58,130 +46,30 @@ def aqi_category(aqi):
     return "Severe",                       "#6d0c0c", "#f5c0c0", "🔥"
 
 # ─────────────────────────────────────────────────────────────
-# GLOBAL CSS
+# CSS
 # ─────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@700&display=swap');
-
-html, body, [class*="css"] {
-    font-family: 'DM Sans', sans-serif;
-    background-color: #0f1117;
-    color: #e8eaf0;
-}
+html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; background-color: #0f1117; color: #e8eaf0; }
 #MainMenu, footer, header { visibility: hidden; }
 .block-container { padding: 1.5rem 2rem 2rem 2rem; max-width: 1400px; }
-
-.aqi-header {
-    text-align: center;
-    padding: 2rem 1rem 1rem 1rem;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-    margin-bottom: 2rem;
-}
-.aqi-header h1 {
-    font-family: 'Playfair Display', serif;
-    font-size: 2.6rem;
-    font-weight: 700;
-    margin: 0;
-    background: linear-gradient(135deg, #a8edea, #fed6e3);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    letter-spacing: -0.5px;
-}
-.aqi-header p {
-    color: rgba(255,255,255,0.45);
-    font-size: 0.95rem;
-    margin-top: 0.4rem;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    font-weight: 300;
-}
-.section-label {
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 2.5px;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.3);
-    margin-bottom: 0.8rem;
-    margin-top: 0.2rem;
-}
-.aqi-card {
-    border-radius: 20px;
-    padding: 2rem 1.5rem;
-    text-align: center;
-    margin-bottom: 1rem;
-    border: 1px solid rgba(255,255,255,0.06);
-}
-.aqi-number {
-    font-family: 'Playfair Display', serif;
-    font-size: 5rem;
-    font-weight: 700;
-    line-height: 1;
-    margin: 0.2rem 0;
-}
-.aqi-label {
-    font-size: 0.8rem;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    opacity: 0.6;
-    font-weight: 500;
-}
+.aqi-header { text-align: center; padding: 2rem 1rem 1rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 2rem; }
+.aqi-header h1 { font-family: 'Playfair Display', serif; font-size: 2.6rem; font-weight: 700; margin: 0; background: linear-gradient(135deg, #a8edea, #fed6e3); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.5px; }
+.aqi-header p { color: rgba(255,255,255,0.45); font-size: 0.95rem; margin-top: 0.4rem; letter-spacing: 2px; text-transform: uppercase; font-weight: 300; }
+.section-label { font-size: 0.7rem; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; color: rgba(255,255,255,0.3); margin-bottom: 0.8rem; margin-top: 0.2rem; }
+.aqi-card { border-radius: 20px; padding: 2rem 1.5rem; text-align: center; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.06); }
+.aqi-number { font-family: 'Playfair Display', serif; font-size: 5rem; font-weight: 700; line-height: 1; margin: 0.2rem 0; }
+.aqi-label { font-size: 0.8rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.6; font-weight: 500; }
 .aqi-category { font-size: 1.4rem; font-weight: 600; margin-top: 0.5rem; }
-.delta-card {
-    border-radius: 14px;
-    padding: 1rem 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 0.8rem;
-    border: 1px solid rgba(255,255,255,0.06);
-    background: rgba(255,255,255,0.04);
-}
+.delta-card { border-radius: 14px; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.8rem; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.04); }
 .delta-label { font-size: 0.78rem; color: rgba(255,255,255,0.4); letter-spacing: 1px; text-transform: uppercase; }
 .delta-value { font-size: 1.6rem; font-weight: 600; font-family: 'Playfair Display', serif; }
-.insight-card {
-    background: linear-gradient(135deg, rgba(168,237,234,0.06), rgba(254,214,227,0.06));
-    border: 1px solid rgba(168,237,234,0.15);
-    border-radius: 18px;
-    padding: 1.5rem 1.8rem;
-    margin-top: 1rem;
-    line-height: 1.8;
-    font-size: 0.95rem;
-    color: rgba(255,255,255,0.82);
-}
-.insight-card .insight-header {
-    font-size: 0.7rem;
-    letter-spacing: 2.5px;
-    text-transform: uppercase;
-    color: #a8edea;
-    font-weight: 600;
-    margin-bottom: 0.8rem;
-}
-.warning-banner {
-    background: rgba(246,173,85,0.1);
-    border: 1px solid rgba(246,173,85,0.3);
-    border-radius: 10px;
-    padding: 0.6rem 1rem;
-    font-size: 0.78rem;
-    color: rgba(246,173,85,0.9);
-    margin-bottom: 0.8rem;
-}
-div.stButton > button {
-    background: linear-gradient(135deg, #a8edea22, #fed6e322);
-    border: 1px solid rgba(168,237,234,0.3);
-    color: #a8edea;
-    border-radius: 10px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.82rem;
-    font-weight: 500;
-    letter-spacing: 1px;
-    padding: 0.5rem 1.2rem;
-    width: 100%;
-}
-div.stButton > button:hover {
-    background: linear-gradient(135deg, #a8edea33, #fed6e333);
-    border-color: rgba(168,237,234,0.6);
-}
+.insight-card { background: linear-gradient(135deg, rgba(168,237,234,0.06), rgba(254,214,227,0.06)); border: 1px solid rgba(168,237,234,0.15); border-radius: 18px; padding: 1.5rem 1.8rem; margin-top: 1rem; line-height: 1.8; font-size: 0.95rem; color: rgba(255,255,255,0.82); }
+.insight-card .insight-header { font-size: 0.7rem; letter-spacing: 2.5px; text-transform: uppercase; color: #a8edea; font-weight: 600; margin-bottom: 0.8rem; }
+.warning-banner { background: rgba(246,173,85,0.1); border: 1px solid rgba(246,173,85,0.3); border-radius: 10px; padding: 0.6rem 1rem; font-size: 0.78rem; color: rgba(246,173,85,0.9); margin-bottom: 0.8rem; }
+div.stButton > button { background: linear-gradient(135deg, #a8edea22, #fed6e322); border: 1px solid rgba(168,237,234,0.3); color: #a8edea; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 500; letter-spacing: 1px; padding: 0.5rem 1.2rem; width: 100%; }
+div.stButton > button:hover { background: linear-gradient(135deg, #a8edea33, #fed6e333); border-color: rgba(168,237,234,0.6); }
 .stSlider label { font-size: 0.82rem !important; color: rgba(255,255,255,0.55) !important; }
 hr { border-color: rgba(255,255,255,0.06) !important; }
 .stSelectbox label { font-size: 0.82rem !important; color: rgba(255,255,255,0.4) !important; }
@@ -298,8 +186,7 @@ def call_ollama(top_features, shap_vals_dict, sim_orig, sim_new, delta, kb_ctx):
     except requests.exceptions.Timeout:
         return (
             "Ollama timed out after 120 seconds. "
-            "Try a lighter model: run 'ollama pull phi3' in terminal, "
-            "then change OLLAMA_MODEL to 'phi3' in app.py."
+            "Try: ollama pull phi3 then change OLLAMA_MODEL to 'phi3' in app.py."
         )
     except Exception as e:
         return f"Unexpected error: {e}"
@@ -416,7 +303,7 @@ with top_r:
 baseline = X.iloc[row_idx].to_dict()
 
 # ─────────────────────────────────────────────────────────────
-# SESSION STATE — initialise slider keys to 0 if not present
+# SESSION STATE
 # ─────────────────────────────────────────────────────────────
 for f in FEATURES:
     if f"slider_{f}" not in st.session_state:
@@ -425,20 +312,18 @@ for f in FEATURES:
 if "reset_flag" not in st.session_state:
     st.session_state.reset_flag = False
 
-# Auto-reset when day changes
 if st.session_state.get("last_row_idx") != row_idx:
     st.session_state.last_row_idx = row_idx
     for f in FEATURES:
         st.session_state[f"slider_{f}"] = 0
 
-# Apply reset flag
 if st.session_state.reset_flag:
     for f in FEATURES:
         st.session_state[f"slider_{f}"] = 0
     st.session_state.reset_flag = False
 
 # ─────────────────────────────────────────────────────────────
-# COMPUTE — reads slider values from session state directly
+# COMPUTE
 # ─────────────────────────────────────────────────────────────
 reductions        = {f: st.session_state[f"slider_{f}"] for f in FEATURES}
 modified          = apply_reductions(baseline, reductions)
@@ -458,9 +343,6 @@ new_cat,  new_text_col,  new_bg,  new_icon  = aqi_category(new_aqi)
 # ─────────────────────────────────────────────────────────────
 left_col, right_col = st.columns([1.1, 0.9], gap="large")
 
-# ══════════════════════════════
-# LEFT — SLIDERS
-# ══════════════════════════════
 with left_col:
     st.markdown('<div class="section-label">Pollutant Reduction Simulator</div>', unsafe_allow_html=True)
     st.markdown(
@@ -482,7 +364,6 @@ with left_col:
 
     st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
 
-    # Particulates
     st.markdown('<div class="section-label" style="margin-top:0.8rem">Particulates</div>', unsafe_allow_html=True)
     for f in ["PM2.5", "PM10"]:
         st.slider(
@@ -491,7 +372,6 @@ with left_col:
             key=f"slider_{f}", format="%d%%",
         )
 
-    # Nitrogen compounds
     st.markdown('<div class="section-label" style="margin-top:0.8rem">Nitrogen Compounds</div>', unsafe_allow_html=True)
     for f in ["NO", "NO2", "NH3"]:
         st.slider(
@@ -500,7 +380,6 @@ with left_col:
             key=f"slider_{f}", format="%d%%",
         )
 
-    # Other gases
     st.markdown('<div class="section-label" style="margin-top:0.8rem">Other Gases</div>', unsafe_allow_html=True)
     for f in ["CO", "SO2", "O3"]:
         st.slider(
@@ -509,9 +388,6 @@ with left_col:
             key=f"slider_{f}", format="%d%%",
         )
 
-# ══════════════════════════════
-# RIGHT — AQI CARDS
-# ══════════════════════════════
 with right_col:
     st.markdown('<div class="section-label">Live AQI Forecast</div>', unsafe_allow_html=True)
 
